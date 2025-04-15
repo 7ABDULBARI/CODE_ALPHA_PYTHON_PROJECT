@@ -1,0 +1,337 @@
+import random
+import time
+import os
+
+MAX_WORD_LENGTH = 50
+MAX_CATEGORY_WORDS = 100000
+MAX_GUESSES = 26
+guessed_letters = [''] * MAX_GUESSES
+guess_count = 0
+score = 0
+hint_a = 1
+
+
+def cls():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def save_game_records(word, result):
+    global score
+    try:
+        with open("game_records.txt", "a") as file:
+            file.write(f"Word: {word}, Result: {result}, Score: {score}\n")
+    except IOError:
+        print("Error in opening the file.")
+
+
+def show_game_record():
+    cls()
+    try:
+        with open("game_records.txt", "r") as file:
+            print("--Game Records--")
+            for line in file:
+                print(line, end="")
+    except FileNotFoundError:
+        print("Game records file not found !!")
+    print("\n")
+    input("Press Enter to exit the records...")
+    cls()
+
+
+def read_word_file(filename):
+    try:
+        with open(filename, "r") as dictionary:
+            words = [line.strip() for line in dictionary]
+            if not words:
+                print("Error: File is empty.")
+                return None
+            random_index = random.randrange(len(words))
+            return words[random_index]
+    except FileNotFoundError:
+        print(f"Error: Could not open file {filename}.")
+        return None
+
+
+programming_words = [
+    "variable", "function", "compiler", "debugger", "algorithm",
+    "syntax", "library", "recursion", "polymorphism", "array",
+    "pointer", "inheritance", "encapsulation", "framework", "module",
+    "constructor", "destructor", "repository", "branch", "commit",
+    "merge", "dependency", "optimization", "object", "interface",
+    "exception", "loop", "condition", "execution", "parameter",
+    "binary", "floating", "virtual", "network", "protocol",
+    "database", "stack", "queue", "hashmap", "encryption"
+]
+
+sports_words = [
+    "soccer", "cricket", "baseball", "tennis", "badminton",
+    "hockey", "basketball", "rugby", "marathon", "cycling",
+    "swimming", "gymnastics", "archery", "boxing", "karate",
+    "wrestling", "golf", "volleyball", "surfing", "snowboarding",
+    "skiing", "sprinting", "skating", "rowing", "kayaking",
+    "triathlon", "fencing", "bowling", "snooker", "darts",
+    "sailing", "shooting", "equestrian", "handball", "softball",
+    "polo", "motorsport", "weightlifting", "paragliding"
+]
+
+animal_words = [
+    "elephant", "tiger", "kangaroo", "giraffe", "panda",
+    "dolphin", "parrot", "lion", "rhinoceros", "penguin",
+    "zebra", "cheetah", "hippopotamus", "crocodile", "chameleon",
+    "ostrich", "peacock", "koala", "platypus", "armadillo",
+    "jaguar", "gorilla", "flamingo", "salamander", "hedgehog",
+    "otter", "octopus", "shark", "whale", "sparrow",
+    "eagle", "owl", "bat", "fox", "wolf",
+    "bear", "moose", "buffalo", "antelope", "leopard"
+]
+
+physics_words = [
+    "gravity", "force", "momentum", "energy", "work",
+    "power", "velocity", "acceleration", "mass", "density",
+    "friction", "wave", "frequency", "amplitude", "thermodynamics",
+    "quantum", "relativity", "electricity", "magnetism", "circuit",
+    "voltage", "current", "resistance", "particle", "atom",
+    "nucleus", "photon", "entropy", "field", "motion",
+    "optics", "lens", "refraction", "diffraction", "vacuum"
+]
+
+maths_words = [
+    "algebra", "geometry", "calculus", "trigonometry", "equation",
+    "matrix", "vector", "integral", "derivative", "probability",
+    "statistics", "angle", "theorem", "coordinate", "dimension",
+    "function", "sequence", "series", "variable", "ratio",
+    "logarithm", "exponent", "prime", "factor", "graph",
+    "area", "volume", "perimeter", "radius", "diameter"
+]
+
+word_categories = {
+    1: programming_words,
+    2: sports_words,
+    3: animal_words,
+    4: physics_words,
+    5: maths_words
+}
+
+
+def pick_random_word(category_words):
+    return random.choice(category_words)
+
+
+def initialize_display(word):
+    return ['_'] * len(word)
+
+
+def show_hangman(attempts):
+    hangman_stages = [
+        "  O\n /|\\\n / \\\n",    # 0 attempts left
+        "  O\n /|\\\n / \n",     # 1 attempt left
+        "  O\n /|\\\n\n",       # 2 attempts left
+        "  O\n /|\n\n",        # 3 attempts left
+        "  O\n  |\n\n",        # 4 attempts left
+        "  O\n\n\n"            # 5 attempts left
+    ]
+    print(f"\033[33mHangman:\n{hangman_stages[5 - attempts]}\033[0m")
+
+
+def is_repeated(guess):
+    global guessed_letters, guess_count
+    return guess in guessed_letters[:guess_count]
+
+
+def get_unique_letters(word):
+    return len(set(word))
+
+
+def hint(word, display):
+    global score
+    length = len(word)
+    available_indices = [i for i, letter in enumerate(display) if letter == '_']
+    if available_indices:
+        random_index = random.choice(available_indices)
+        display[random_index] = word[random_index]
+        return True
+    return False
+
+
+def hangman_game(category_words, n, choice_num):
+    global guessed_letters, guess_count, score, hint_a
+    word = ""
+    if n == 1:
+        word = pick_random_word(category_words)
+    elif n == 0:
+        word_from_file = read_word_file("dictionary.txt")
+        if word_from_file:
+            word = word_from_file
+        else:
+            return
+
+    display = initialize_display(word)
+    attempts = 5
+    correct = 0
+    repeat = 3
+    guess_count = 0
+    guessed_letters = [''] * MAX_GUESSES
+    hint_a = 1
+
+    length = len(word)
+    word_letter_num = get_unique_letters(word)
+
+    print("Let's play Hangman!")
+
+    while attempts > 0 and correct < length:
+        cls()
+        show_hangman(attempts)
+
+        if attempts == 1 and hint_a == 1 and word_letter_num > 2 and (word_letter_num - display.count('_')) > 1:
+            while True:
+                hint_choice = input("Do you want a hint? (Y/N): ").strip().lower()
+                if hint_choice == 'y':
+                    hint_a = 0
+                    if hint(word, display):
+                        show_hangman(attempts)
+                        print("Hint used! Revealing a letter...")
+                        print("Word after hint:", "".join(display))
+                        print("\nProcessing.........")
+                        time.sleep(3)
+                        cls()
+                        show_hangman(attempts)
+                    break
+                elif hint_choice == 'n':
+                    hint_a = 0
+                    print("\nNo hint used. Good luck!")
+                    print("\nProcessing.........")
+                    time.sleep(3)
+                    cls()
+                    show_hangman(attempts)
+                    break
+                else:
+                    print("\nInvalid input. Please enter Y (yes) or N (no).")
+                    time.sleep(3)
+                    cls()
+
+        print("Word:", " ".join(display))
+        if choice_num in word_categories:
+            theme = {1: "Programming", 2: "Sports", 3: "Animals", 4: "Physics", 5: "Maths"}.get(choice_num)
+            print(f"Theme: {theme}")
+        elif choice_num == 6:
+            print("Theme: Entire Dictionary")
+
+        guess = input("Enter your guess: ").strip().lower()
+
+        if len(guess) != 1 or not guess.isalpha():
+            print("Invalid guess. Please enter a single letter.")
+            time.sleep(2)
+            continue
+
+        if is_repeated(guess):
+            repeat -= 1
+            print(f"\nRepeated letters are not allowed! You have {repeat} repeat chances left.")
+            if repeat == 0:
+                break
+        else:
+            guessed_letters[guess_count] = guess
+            guess_count += 1
+
+            if guess not in word:
+                attempts -= 1
+                print(f"\nIncorrect! Attempts left: {attempts}")
+            else:
+                for i, letter in enumerate(word):
+                    if letter == guess and display[i] == '_':
+                        display[i] = guess
+                        correct += 1
+                print(f"\nCorrect Guess attempts available are: {attempts}")
+
+        if correct == length:
+            score += 1
+            print("\nCorrect!")
+
+        input("\nPress Enter to proceed: ")
+
+    cls()
+    show_hangman(attempts if attempts >= 0 else 0)
+
+    if correct == length:
+        print(f"\nCongratulations! You guessed the word: {word}")
+        save_game_records(word, "Win")
+    elif repeat == 0:
+        print(f"\nYou failed as you did not adhere to the warning. The word was {word}. Try again next time.")
+        save_game_records(word, "Loss")
+    else:
+        print(f"\nYou failed! The word was: {word}. Try again next time.")
+        save_game_records(word, "Loss")
+
+    print(f"Your Score is: {score}")
+
+    while True:
+        restart = input("\nDo you want to restart? (Y/N): ").strip().lower()
+        if restart in ['y', 'n']:
+            break
+        else:
+            print("Invalid input. Please enter Y or N.")
+
+    if restart == 'y':
+        print("\nRestarting the game...")
+        time.sleep(3)
+        cls()
+        hangman_game(category_words, n, choice_num)
+    else:
+        global score
+        score = 0
+        print("\nGame Over. The Score is reset to 0.")
+        print("\nEnding the game...")
+        time.sleep(3)
+        cls()
+
+
+def choice():
+    global score
+    exit_game = False
+    while not exit_game:
+        cls()
+        print("----- HANGMAN GAME -------")
+        print("1. Play")
+        print("2. Exit")
+        print("3. Show Game Records")
+        options = input("Select Any of these option: ")
+
+        if options == '1':
+            while True:
+                cls()
+                print("Choose a category:")
+                print("1. Programming")
+                print("2. Sports")
+                print("3. Animals")
+                print("4. Physics")
+                print("5. Maths")
+                print("6. Entire dictionary")
+                choice_num = input("Enter your choice (1-6): ")
+                if choice_num.isdigit() and 1 <= int(choice_num) <= 6:
+                    choice_num = int(choice_num)
+                    category = word_categories.get(choice_num)
+                    if category:
+                        print(f"\nYou chose { {1: 'Programming', 2: 'Sports', 3: 'Animals', 4: 'Physics', 5: 'Maths'}.get(choice_num) }!")
+                        hangman_game(category, 1, choice_num)
+                        break
+                    elif choice_num == 6:
+                        print("\nYou chose a random word from dictionary!")
+                        hangman_game(None, 0, choice_num)
+                        break
+                else:
+                    print("\nInvalid choice! Please enter a number between 1 and 6.")
+                    time.sleep(3)
+        elif options == '2':
+            print("Exiting.....")
+            time.sleep(3)
+            cls()
+            exit_game = True
+        elif options == '3':
+            show_game_record()
+        else:
+            print("\nInvalid Option.")
+            print("\nRestarting.........")
+            time.sleep(3)
+
+
+if __name__ == "__main__":
+    choice()
